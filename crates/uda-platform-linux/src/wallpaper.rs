@@ -190,8 +190,8 @@ impl LinuxWallpaperManager {
         .await
         .map_err(|e| UdaError::DetectionFailed(format!("zbus proxy: {e}")))?;
 
-        proxy
-            .call::<_, _, ()>("evaluateScript", &script)
+        let _: String = proxy
+            .call("evaluateScript", &script)
             .await
             .map_err(|e| UdaError::DetectionFailed(format!("zbus call: {e}")))?;
 
@@ -290,12 +290,8 @@ impl WallpaperManager for LinuxWallpaperManager {
     }
 
     fn capabilities(&self) -> Result<Capability, UdaError> {
-        let mut caps = Capability::SET_WALLPAPER;
-
-        if Self::command_exists("gsettings") {
-            caps |= Capability::GET_WALLPAPER;
-        }
-
+        let caps = Capability::SET_WALLPAPER;
+        // TODO: Add capabilities for get_wallpaper when implemented.
         Ok(caps)
     }
 }
