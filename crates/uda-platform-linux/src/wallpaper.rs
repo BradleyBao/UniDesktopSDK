@@ -190,12 +190,29 @@ impl LinuxWallpaperManager {
         .await
         .map_err(|e| UdaError::DetectionFailed(format!("zbus proxy: {e}")))?;
 
-        let _: String = proxy
-            .call("evaluateScript", &script)
+        let reply = proxy
+            .call_method("evaluateScript", &script)
             .await
             .map_err(|e| UdaError::DetectionFailed(format!("zbus call: {e}")))?;
 
-        Ok(())
+        let body = reply.body();
+        match body.signature() {
+            None if body.is_empty() => Ok(()),
+            Some(sig) if sig.as_str().is_empty() && body.is_empty() => Ok(()),
+            Some(sig) if sig.as_str() == "s" => {
+                let _: String = body
+                    .deserialize()
+                    .map_err(|e| UdaError::DetectionFailed(format!("zbus deserialize: {e}")))?;
+                Ok(())
+            }
+            Some(sig) => Err(UdaError::DetectionFailed(format!(
+                "Unexpected KDE evaluateScript reply signature: {}",
+                sig.as_str()
+            ))),
+            None => Err(UdaError::DetectionFailed(
+                "Unexpected KDE evaluateScript reply has data but no signature".to_string(),
+            )),
+        }
     }
 
     async fn set_wallpaper_hyprland(
